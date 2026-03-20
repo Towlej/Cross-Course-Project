@@ -141,7 +141,7 @@ def CurrentTomInference(shotname: str, rng_number: int):
     # Important to only use inner points, as otherwise you will get eigenvalues with value zero
     print(D_opt_covariance(expanded_cov[inner_points_bool][:, inner_points_bool]))
     print("MI GAIN")
-    print(MI_gain(Post.expanded_cov[inner_points_bool[:, inner_points_bool], Post.prior_cov]))
+    print(MI_gain(Post.expanded_cov[inner_points_bool][:, inner_points_bool], Post.prior_cov))
     # Calculate plasma parameters of interest
     Ip_inf, Zc_inf, Rc_inf, Ip_inf_std, Zc_inf_std, Rc_inf_std = CalculatePlasmaParameters(post_mean_tom, expanded_cov, rVec, zVec)
 
@@ -244,6 +244,8 @@ def CurrentTomInferenceZoom(shotname: str, rng_number: int):
             Tan_mask = (trial_config == 0)
             Norm_mask = (trial_config == 1)
 
+            if np.sum(Tan_mask) == 0 or np.sum(Norm_mask) == 0:
+                continue
             # ----- build diagnostics -----
             TanPickupCoil = DEMOPickupCoil()
             TanPickupCoil.load_data(
@@ -251,7 +253,7 @@ def CurrentTomInferenceZoom(shotname: str, rng_number: int):
                 diag_tan_coils_struct[Tan_mask]
             )
             TanPickupCoil.add_noise(rng_number)
-            TanPickupCoil.set_forward_model(response_tan_matrix)
+            TanPickupCoil.set_forward_model(response_tan_matrix[Tan_mask, :])
 
             NormPickupCoil = DEMOPickupCoil(Is_Tan=False)
             NormPickupCoil.load_data(
@@ -259,7 +261,7 @@ def CurrentTomInferenceZoom(shotname: str, rng_number: int):
                 diag_norm_coils_struct[Norm_mask]
             )
             NormPickupCoil.add_noise(rng_number)
-            NormPickupCoil.set_forward_model(response_norm_matrix)
+            NormPickupCoil.set_forward_model(response_norm_matrix[Norm_mask, :])
 
             FluxLoop = DEMOFluxLoop()
             FluxLoop.load_data(diag_flux_loops_current + diag_flux_loops_struct)
@@ -305,16 +307,19 @@ def CurrentTomInferenceZoom(shotname: str, rng_number: int):
             )
 
             Post.set_prior(cov)
+
+
+
             Post.calculate_posterior()
 
             expanded_cov = Post.expanded_cov
 
             MI = MI_gain(
-                expanded_cov[inner_points_bool[:, inner_points_bool], Post.prior_cov]
-            )
+                expanded_cov[inner_points_bool][:, inner_points_bool], Post.prior_cov)
+            
 
-            print(f"Coil {i} trial MI: {MI} | Best trial MI: {best_trial_MI}")
-
+            print("| Best trial MI: {best_trial_MI}")
+            print(f"Remaining candidates: {np.sum(~flipped)}")
             # ----- track best trial -----
             if MI > best_trial_MI:
                 best_trial_MI = MI
@@ -347,7 +352,7 @@ def CurrentTomInferenceZoom(shotname: str, rng_number: int):
         diag_tan_coils_struct[Tan_mask]
     )
     TanPickupCoil.add_noise(rng_number)
-    TanPickupCoil.set_forward_model(response_tan_matrix)
+    TanPickupCoil.set_forward_model(response_tan_matrix[Tan_mask, :])
 
     NormPickupCoil = DEMOPickupCoil(Is_Tan=False)
     NormPickupCoil.load_data(
@@ -355,7 +360,7 @@ def CurrentTomInferenceZoom(shotname: str, rng_number: int):
         diag_norm_coils_struct[Norm_mask]
     )
     NormPickupCoil.add_noise(rng_number)
-    NormPickupCoil.set_forward_model(response_norm_matrix)
+    NormPickupCoil.set_forward_model(response_norm_matrix[Norm_mask, :])
 
     FluxLoop = DEMOFluxLoop()
     FluxLoop.load_data(diag_flux_loops_current + diag_flux_loops_struct)
@@ -405,6 +410,30 @@ def CurrentTomInferenceZoom(shotname: str, rng_number: int):
 
     post_mean_tom = Post.expanded_mean.reshape((rVec.shape[0], rVec.shape[1]))
     expanded_cov = Post.expanded_cov
+
+    # =========================
+    # FINAL COIL CONFIG SUMMARY
+    # =========================
+
+    Tan_mask = (config == 0)
+    Norm_mask = (config == 1)
+
+    num_tan = np.sum(Tan_mask)
+    num_norm = np.sum(Norm_mask)
+
+    print("\n===== FINAL COIL CONFIGURATION =====")
+    print(f"Total coils: {len(config)}")
+    print(f"Tangential coils: {num_tan}")
+    print(f"Normal coils: {num_norm}")
+
+    print("\nTangential coil indices:")
+    print(np.where(Tan_mask)[0])
+
+    print("\nNormal coil indices:")
+    print(np.where(Norm_mask)[0])
+
+    print(f"Accepted flip: coil {best_trial_index}")
+    print(f"Flipped array: {flipped}")
     # =========================
     # PLASMA PARAMETERS
     # =========================
