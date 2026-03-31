@@ -16,7 +16,7 @@ def Limiter_from_EQ(shotname: str) -> tuple[np.ndarray[float], np.ndarray[float]
     # Return the R and Z coordinates of the limiter
     return (eq['limiter'][0][0][0][0], eq['limiter'][0][0][1][0])
 
-wall_coords = Limiter_from_EQ(shotname = 'Equil_1_li_0d8_beta_0d1_CNL4E.mat')
+wall_coords = Limiter_from_EQ(shotname = 'Equil_1_li_0d8_beta_0d1_CNL4E.mat') # this can be any file so just pick one
 
 # These are the index arrays for tangential and normal. Make sure they have commas!!!!!!!
 Coil_T = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,33,34,35,42,43,49,54,55,56,57,58,59] # Array for Index, Tangential Coils
